@@ -3,6 +3,9 @@ MobileViT Implementation in Tensorflow2
 ## Introduction
 This repository contains tensorflow2 implementation of [MobileViT](https://arxiv.org/abs/2110.02178).
 
+You can train the network for cifar dataset.
+
+
 ![arch]('./../img/arch.png)
 ![table]('./../img/table1.png)
 
