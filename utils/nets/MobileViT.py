@@ -166,7 +166,7 @@ class MViT_block(tf.keras.layers.Layer):
         
         #Local representations
         y = self.local_rep_conv1(x)
-        y = self.local_rep_conv2(x)
+        y = self.local_rep_conv2(y)
         #####
         # Transformers as Convolutions(global representations)
         #   Unfold
