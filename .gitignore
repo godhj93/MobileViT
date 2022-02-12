@@ -1,0 +1,7 @@
+*.ipynb
+models/
+/.ipynb_checkpoints
+**/**/__pycache__
+*.zip
+/data
+.DS_Store
