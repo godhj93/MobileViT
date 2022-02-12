@@ -1,4 +1,4 @@
-MobileViT Implementation in Tensorflow2
+# MobileViT Implementation in Tensorflow2
 
 ## Introduction
 This repository contains tensorflow2 implementation of [MobileViT](https://arxiv.org/abs/2110.02178).
