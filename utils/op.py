@@ -10,7 +10,7 @@ class Trainer:
     Author: H.J Shin
     Date: 2022.02.06
     '''
-    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=224):
+    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256):
         '''
         model: model for training.
         dataset: cifar10 or cifar100.
