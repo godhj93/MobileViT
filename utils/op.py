@@ -8,7 +8,7 @@ class Trainer:
     '''
     Train a Neural Network
     Author: H.J Shin
-    Date: 2022.02.06
+    Date: 2022.02.14
     '''
     def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256):
         '''
@@ -23,6 +23,13 @@ class Trainer:
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size)
         self._optimizer = SGD(nesterov=True, momentum=0.9, learning_rate = self.LR_Scheduler())
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+        
+        #Tensorboard
+        self.time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        train_log_dir = 'logs/gradient_tape/' + self.time + '/train'
+        test_log_dir = 'logs/gradient_tape/' + self.time + '/test'
+        self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+        self.test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
     def LR_Scheduler(self):
         STEPS = len(self.train_ds) # Stpes in one epoch
@@ -37,7 +44,7 @@ class Trainer:
 
     
     def train(self):
-        print(f"Start Training...")
+        print(f"Initializing...")
         
   
         self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
@@ -52,11 +59,26 @@ class Trainer:
             for x,y in train_bar:
                 self.train_step(x,y)
                 train_bar.set_description(f"Loss: {self.train_loss.result().numpy():.4f}, Acc: {self.train_accuracy.result().numpy():.4f}")
-            
+            with self.train_summary_writer.as_default():
+                tf.summary.scalar('loss', self.train_loss.result(), step=e)
+                tf.summary.scalar('accuracy', self.train_accuracy.result(), step=e)
+
             for x,y in test_bar:
                 self.test_step(x,y)
                 test_bar.set_description(f"Loss: {self.test_loss.result().numpy():.4f}, Acc: {self.test_accuracy.result().numpy():.4f}")
+            with self.test_summary_writer.as_default():
+                tf.summary.scalar('loss', self.test_loss.result(), step=e)
+                tf.summary.scalar('accuracy', self.test_accuracy.result(), step=e)
+
+        self.reset_metric()
     
+    def reset_metric(self):
+
+        self.train_loss.reset_states()
+        self.test_loss.reset_states()
+        self.train_accuracy.reset_states()
+        self.test_accuracy.reset_states()
+
     @tf.function
     def train_step(self, x,y):
               
@@ -79,10 +101,9 @@ class Trainer:
         self.test_accuracy.update_state(y, y_hat)
         self.test_loss.update_state(loss)
 
-def save_model(model,name='model'):
-    now = datetime.now()
-    time = now.strftime("%Y-%m-%d_%H-%M-%S")
-    model_path = './models/' + name + '_' + time
+    def save_model(self, model,name='model'):
 
-    model.save(model_path)
-    print(f'the model has been saved in {model_path}')
+        model_path = './models/' + name + '_' + self.time
+
+        model.save(model_path)
+        print(f'the model has been saved in {model_path}')

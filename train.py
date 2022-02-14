@@ -1,6 +1,5 @@
 import tensorflow as tf
 from utils.op import Trainer
-from utils.op import save_model
 import argparse
 from utils.nets.MobileViT import MobileViT
 
@@ -20,7 +19,7 @@ def main():
     print(model.summary())
     trainer = Trainer(model, epochs=args.ep, batch_size=args.bs)
     trainer.train()
-    save_model(model= model, name='MobileViT')
+    trainer.save_model(model= model, name='MobileViT')
     
 if __name__ == '__main__':
 
