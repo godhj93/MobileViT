@@ -5,3 +5,4 @@ models/
 *.zip
 /data
 .DS_Store
+/logs
