@@ -15,7 +15,7 @@ pip install -r requirements.txt
 ```
 ## Usage
 ```
-python train.py --ep 50 --bs 16 --data 'cifar10' --arch [X, XS, XXS]
+python train.py --ep 50 --bs 16 --data 'cifar10' --arch [S, XS, XXS]
 ```
 
 
