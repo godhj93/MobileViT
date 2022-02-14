@@ -54,7 +54,7 @@ class Trainer:
         self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy('test_accuracy')
       
         for e in range(self._epochs):
-            print(f"\n EPOCHS: {e+1}/{self._epochs}")
+            print(f"\nEPOCHS: {e+1}/{self._epochs}")
             train_bar, test_bar = self.progress_bar()
             for x,y in train_bar:
                 self.train_step(x,y)
