@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import tensorflow as tf
 from tensorflow.keras import layers
 
@@ -9,28 +10,36 @@ class MobileViT(tf.keras.Model):
     Author: H.J. Shin
     Date: 2022.02.12
     '''
-    def __init__(self, classes=1000):
+    def __init__(self, classes=1000, arch='S'):
         '''
         classes: number of logits, default=1000(Imagenet)
         '''
         super(MobileViT, self).__init__()
-    
-        self.conv3x3 = layers.Conv2D(kernel_size= 3, filters= 16, strides= 2, padding= 'same')
-        self.MV1_1 = InvertedResidual(strides= 1, filters= 32)
+        ViTArch ={
+            'S':[16, 32, 64, 64, 64, 96, 144, 128, 192, 160, 240, 640],
+            'XS':[16, 32, 48, 48, 48, 64, 96, 80, 120, 96, 144, 384],
+            'XXS':[16, 16, 24, 24, 24, 48, 64, 64, 80, 80, 96, 320]
+             }
+        if arch not in ['S', 'XS', 'XXS']:
+            raise ValueError("arch must be 'X', 'XS', 'XXS'")
 
-        self.MV2_1 = InvertedResidual(strides= 2, filters= 64)
-        self.MV2_2 = InvertedResidual(strides= 1, filters= 64)
-        self.MV2_3 = InvertedResidual(strides= 1, filters= 64)
+        arch = ViTArch[arch]
+        self.conv3x3 = layers.Conv2D(kernel_size= 3, filters= arch[0], strides= 2, padding= 'same')
+        self.MV1_1 = InvertedResidual(strides= 1, filters= arch[1])
 
-        self.MV3_1 = InvertedResidual(strides= 2, filters= 96)
-        self.MViT_block_1 = MViT_block(dim=144, n=3, L=2)
+        self.MV2_1 = InvertedResidual(strides= 2, filters= arch[2])
+        self.MV2_2 = InvertedResidual(strides= 1, filters= arch[3])
+        self.MV2_3 = InvertedResidual(strides= 1, filters= arch[4])
 
-        self.MV4_1 = InvertedResidual(strides=2, filters=128)
-        self.MViT_block_2 = MViT_block(dim=192, n=3, L=4)
+        self.MV3_1 = InvertedResidual(strides= 2, filters= arch[5])
+        self.MViT_block_1 = MViT_block(dim=arch[6], n=3, L=2)
 
-        self.MV5_1 = InvertedResidual(strides=2, filters=160)
-        self.MViT_block_3 = MViT_block(dim=240, n=3, L=3)
-        self.point_conv1 = layers.Conv2D(filters=640, kernel_size=1, strides=1, activation=tf.nn.swish)
+        self.MV4_1 = InvertedResidual(strides=2, filters=arch[7])
+        self.MViT_block_2 = MViT_block(dim=arch[8], n=3, L=4)
+
+        self.MV5_1 = InvertedResidual(strides=2, filters=arch[9])
+        self.MViT_block_3 = MViT_block(dim=arch[10], n=3, L=3)
+        self.point_conv1 = layers.Conv2D(filters=arch[11], kernel_size=1, strides=1, activation=tf.nn.swish)
         
         self.global_pool = layers.GlobalAveragePooling2D()
         self.logits = layers.Dense(classes, activation = tf.nn.softmax)

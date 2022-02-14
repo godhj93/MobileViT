@@ -10,16 +10,17 @@ for gpu in gpus:
 parser = argparse.ArgumentParser('Train MobileViT | Dataset : CIFAR 10')
 parser.add_argument("--ep", default=50, type=int,help="Epochs")
 parser.add_argument("--bs", default=32, type=int,help="Batch Size")
+parser.add_argument("--arch", default='S', type=str,help="Architecture: [X, XS, XSS]")
 parser.add_argument("--data", default='cifar10')
 args = parser.parse_args()
 
 def main():
 
-    model = MobileViT(classes=10).model(input_shape=(256,256,3))
+    model = MobileViT(arch=args.arch,classes=10).model(input_shape=(256,256,3))
     print(model.summary())
     trainer = Trainer(model, epochs=args.ep, batch_size=args.bs)
     trainer.train()
-    trainer.save_model(model= model, name='MobileViT')
+    trainer.save_model(model= model, name='MobileViT'+'_'+args.arch)
     
 if __name__ == '__main__':
 
