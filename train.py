@@ -10,7 +10,7 @@ for gpu in gpus:
 parser = argparse.ArgumentParser('Train MobileViT | Dataset : CIFAR 10')
 parser.add_argument("--ep", default=50, type=int,help="Epochs")
 parser.add_argument("--bs", default=32, type=int,help="Batch Size")
-parser.add_argument("--arch", default='S', type=str,help="Architecture: [X, XS, XSS]")
+parser.add_argument("--arch", default='S', type=str,help="Architecture: [S, XS, XSS]")
 parser.add_argument("--data", default='cifar10')
 args = parser.parse_args()
 
