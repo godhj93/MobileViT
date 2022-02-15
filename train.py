@@ -12,6 +12,7 @@ parser.add_argument("--ep", default=50, type=int,help="Epochs")
 parser.add_argument("--bs", default=32, type=int,help="Batch Size")
 parser.add_argument("--arch", default='S', type=str,help="Architecture: [S, XS, XSS]")
 parser.add_argument("--data", default='cifar10')
+parser.add_argument("--name", default='MobileViT')
 args = parser.parse_args()
 
 def main():
@@ -20,7 +21,7 @@ def main():
     print(model.summary())
     trainer = Trainer(model, epochs=args.ep, batch_size=args.bs)
     trainer.train()
-    trainer.save_model(model= model, name='MobileViT'+'_'+args.arch)
+    trainer.save_model(name=args.name+'_'+args.arch)
     
 if __name__ == '__main__':
 

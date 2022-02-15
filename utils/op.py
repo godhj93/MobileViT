@@ -101,9 +101,9 @@ class Trainer:
         self.test_accuracy.update_state(y, y_hat)
         self.test_loss.update_state(loss)
 
-    def save_model(self, model,name='model'):
+    def save_model(self, name):
 
         model_path = './models/' + name + '_' + self.time
 
-        model.save(model_path)
+        self._model.save(model_path)
         print(f'the model has been saved in {model_path}')

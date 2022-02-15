@@ -101,14 +101,21 @@ class InvertedResidual(tf.keras.layers.Layer):
         if self.strides not in [1,2]:
             raise ValueError('strides must be 1 or 2')
 
-        self.conv1 = layers.DepthwiseConv2D(kernel_size=3, strides=self.strides, padding='same', use_bias=False)
-        self.swish = tf.nn.swish
-
     def build(self, input_shape):
 
         B,H,W,C = input_shape
+
+        self.bn1 = layers.BatchNormalization()
+        self.bn2 = layers.BatchNormalization()
+        self.bn3 = layers.BatchNormalization()
+        self.add = layers.Add()
+        
+        self.conv1 = layers.DepthwiseConv2D(kernel_size=3, strides=self.strides, padding='same', use_bias=False)
+        self.swish = tf.nn.swish
+
         self.point_conv1 = layers.Conv2D(filters=C, kernel_size=1, strides=1)
         self.point_conv2 = layers.Conv2D(filters=self.filters, kernel_size=1, strides=1)
+
 
     def call(self, x):
 
@@ -203,14 +210,15 @@ class T_encoder(tf.keras.layers.Layer):
         super(T_encoder, self).__init__(name=name)
         self.p_dim = project_dim
         self.num_heads = num_heads
+        
+    def build(self, input_shape):
+        
+        B,H,W,C = input_shape
         self.norm1 = layers.LayerNormalization()
         self.norm2 = layers.LayerNormalization()
         
         self.add = layers.Add()
 
-    def build(self, input_shape):
-        
-        B,H,W,C = input_shape
         self.MHA = layers.MultiHeadAttention(num_heads= self.num_heads, key_dim= self.p_dim, value_dim=None, use_bias=False)
         self.MLP = layers.Dense(C, activation=tf.nn.swish, use_bias=False)
 
@@ -221,12 +229,10 @@ class T_encoder(tf.keras.layers.Layer):
         y = self.MHA(y,y)
     
         residual = self.add([x,y])
-    
+
         y = self.norm2(residual)
     
-        
         y = self.MLP(y)
-    
 
         return self.add([residual, y])
 
