@@ -3,7 +3,7 @@ from tensorflow.keras.datasets import cifar10, cifar100
 from imgaug.augmenters import RandAugment
 
 rand_augmentation = RandAugment(n=3, m=7)
-
+tf.random.set_seed(777)
 def random_augmentation(images):
     images = tf.cast(images, tf.uint8)
     return rand_augmentation(images=images.numpy())

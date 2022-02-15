@@ -2,7 +2,7 @@ from multiprocessing.sharedctypes import Value
 import tensorflow as tf
 from tensorflow.keras import layers
 
-
+tf.random.set_seed(777)
 class MobileViT(tf.keras.Model):
     '''
     MobileViT
