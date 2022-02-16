@@ -10,7 +10,7 @@ class Trainer:
     Author: H.J Shin
     Date: 2022.02.14
     '''
-    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256):
+    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256, DEBUG=False):
         '''
         model: model for training.
         dataset: cifar10 or cifar100.
@@ -20,7 +20,7 @@ class Trainer:
         super(Trainer, self).__init__()
         self._model = model
         self._epochs = epochs
-        self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size)
+        self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
         self._optimizer = SGD(nesterov=True, momentum=0.9, learning_rate = self.LR_Scheduler())
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
         
@@ -70,7 +70,10 @@ class Trainer:
                 tf.summary.scalar('loss', self.test_loss.result(), step=e)
                 tf.summary.scalar('accuracy', self.test_accuracy.result(), step=e)
 
-        self.reset_metric()
+            self.reset_metric()
+        
+        print(f"Training is completed.")
+        
     
     def reset_metric(self):
 
@@ -101,9 +104,12 @@ class Trainer:
         self.test_accuracy.update_state(y, y_hat)
         self.test_loss.update_state(loss)
 
-    def save_model(self, name):
+    def save_weights(self, name):
 
-        model_path = './models/' + name + '_' + self.time
+        model_path = './models/' + name + '_' + self.time +'.h5'
 
-        self._model.save(model_path)
+        self._model.save_weights(model_path)
         print(f'the model has been saved in {model_path}')
+
+
+    

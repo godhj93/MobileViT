@@ -19,9 +19,9 @@ def main():
 
     model = MobileViT(arch=args.arch,classes=10).model(input_shape=(256,256,3))
     print(model.summary())
-    trainer = Trainer(model, epochs=args.ep, batch_size=args.bs)
+    trainer = Trainer(model, epochs=args.ep, batch_size=args.bs , DEBUG=True)
     trainer.train()
-    trainer.save_model(name=args.name+'_'+args.arch)
+    trainer.save_weights(name=args.name+'_'+args.arch)
     
 if __name__ == '__main__':
 

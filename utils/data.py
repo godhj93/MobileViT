@@ -8,7 +8,7 @@ def random_augmentation(images):
     images = tf.cast(images, tf.uint8)
     return rand_augmentation(images=images.numpy())
 
-def data_load(dataset= 'cifar10', batch_size= 16, size= 256):
+def data_load(dataset= 'cifar10', batch_size= 16, size= 256, DEBUG=False):
     AUTO = tf.data.AUTOTUNE
     if dataset=='cifar10':
         (x_train,y_train), (x_test, y_test) = cifar10.load_data()
@@ -16,6 +16,13 @@ def data_load(dataset= 'cifar10', batch_size= 16, size= 256):
         (x_train,y_train), (x_test, y_test) = cifar100.load_data()
     else:
         raise ValueError("dataset must be cifar10 or cifar100")
+
+    if DEBUG==True:
+        print(f"Debug Mode")
+        (x_train,y_train) = (x_train[:1000,:,:,:], y_train[:1000,:])
+        (x_test,y_test) = (x_test[:100,:,:,:], y_test[:100,:])
+        print(f"length of train and test data: {len(x_train), len(x_test)}")
+
     train_ds = (
         tf.data.Dataset.from_tensor_slices((x_train,y_train)).
         batch(batch_size).

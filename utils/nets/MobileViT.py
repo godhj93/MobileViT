@@ -116,6 +116,14 @@ class InvertedResidual(tf.keras.layers.Layer):
         self.point_conv1 = layers.Conv2D(filters=C, kernel_size=1, strides=1)
         self.point_conv2 = layers.Conv2D(filters=self.filters, kernel_size=1, strides=1)
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+             
+            "strides": self.strides,
+            "filters": self.filters,
+        })
+        return config
 
     def call(self, x):
 
@@ -165,8 +173,7 @@ class MViT_block(tf.keras.layers.Layer):
         
         self.encoders = []
         for i in range(self.L):
-            encoder_name = 'Transformer_encoder_%d'%i
-            self.encoders.append(T_encoder(num_heads=2, project_dim=self.p_dim, name=encoder_name))
+            self.encoders.append(T_encoder(num_heads=2, project_dim=self.p_dim))
 
         self.concat = layers.Concatenate()
         
@@ -175,6 +182,15 @@ class MViT_block(tf.keras.layers.Layer):
 
         self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias= False, activation= tf.nn.swish)
         self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias= False, padding='same', activation= tf.nn.swish)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({         
+            "dim": self.p_dim,
+            "L": self.L,
+            "n": self.n,
+        })
+        return config
 
     def call(self, x):
         
@@ -206,8 +222,8 @@ class T_encoder(tf.keras.layers.Layer):
     Author: H.J. Shin
     Date: 2022.02.12
     '''
-    def __init__(self, num_heads, project_dim, name):
-        super(T_encoder, self).__init__(name=name)
+    def __init__(self, num_heads, project_dim):
+        super(T_encoder, self).__init__()
         self.p_dim = project_dim
         self.num_heads = num_heads
         
@@ -222,6 +238,13 @@ class T_encoder(tf.keras.layers.Layer):
         self.MHA = layers.MultiHeadAttention(num_heads= self.num_heads, key_dim= self.p_dim, value_dim=None, use_bias=False)
         self.MLP = layers.Dense(C, activation=tf.nn.swish, use_bias=False)
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "proejct_dim": self.p_dim,
+            "num_heads": self.num_heads
+        })
+        return config
     def call(self, x):
         
         y = self.norm1(x)
