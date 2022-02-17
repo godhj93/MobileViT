@@ -93,10 +93,6 @@ class InvertedResidual(tf.keras.layers.Layer):
         super(InvertedResidual, self).__init__()
         self.strides = strides
         self.filters = filters
-        self.bn1 = layers.BatchNormalization()
-        self.bn2 = layers.BatchNormalization()
-        self.bn3 = layers.BatchNormalization()
-        self.add = layers.Add()
     
         if self.strides not in [1,2]:
             raise ValueError('strides must be 1 or 2')
