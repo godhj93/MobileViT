@@ -1,7 +1,9 @@
+from logging.config import valid_ident
 import tensorflow as tf
 from tqdm import tqdm
 from utils.data import data_load
-from tensorflow.keras.optimizers import SGD, Adam, RMSprop
+from tensorflow.keras.optimizers import SGD
+import copy
 from datetime import datetime
 
 class Trainer:
@@ -18,7 +20,7 @@ class Trainer:
         batch_size: positive int
         '''
         super(Trainer, self).__init__()
-        self._model = model
+        self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
         self._optimizer = SGD(nesterov=True, momentum=0.9, learning_rate = self.LR_Scheduler())
@@ -38,9 +40,15 @@ class Trainer:
         boundaries, values = [B1,B2], [1e-3,1e-4,1e-5]
         return tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries=boundaries, values=values)
         
-    def progress_bar(self):
+    def progress_bar(self, dataset):
+        if dataset == 'train':
+            return tqdm(self.train_ds, ncols=0)
+        elif dataset == 'test':
+            return tqdm(self.test_ds, ncols=0)
+        else:
+            raise ValueError("dataset must be 'train' or 'test'")
 
-        return tqdm(self.train_ds, ncols=0), tqdm(self.test_ds, ncols=0)
+        
 
     
     def train(self):
@@ -55,7 +63,8 @@ class Trainer:
       
         for e in range(self._epochs):
             print(f"\nEPOCHS: {e+1}/{self._epochs}")
-            train_bar, test_bar = self.progress_bar()
+            
+            train_bar = self.progress_bar('train')
             for x,y in train_bar:
                 self.train_step(x,y)
                 train_bar.set_description(f"Loss: {self.train_loss.result().numpy():.4f}, Acc: {self.train_accuracy.result().numpy():.4f}")
@@ -63,6 +72,7 @@ class Trainer:
                 tf.summary.scalar('loss', self.train_loss.result(), step=e)
                 tf.summary.scalar('accuracy', self.train_accuracy.result(), step=e)
 
+            test_bar = self.progress_bar('test')
             for x,y in test_bar:
                 self.test_step(x,y)
                 test_bar.set_description(f"Loss: {self.test_loss.result().numpy():.4f}, Acc: {self.test_accuracy.result().numpy():.4f}")
@@ -109,6 +119,13 @@ class Trainer:
         model_path = './models/' + name + '_' + self.time +'.h5'
 
         self._model.save_weights(model_path)
+        print(f'the model weights has been saved in {model_path}')
+
+    def save_model(self, name):
+
+        model_path = './models/' + name + '_' + self.time
+
+        self._model.save(model_path)
         print(f'the model has been saved in {model_path}')
 
 
