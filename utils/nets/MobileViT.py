@@ -21,7 +21,7 @@ class MobileViT(tf.keras.Model):
             'XXS':[16, 16, 24, 24, 24, 48, 64, 64, 80, 80, 96, 320]
              }
         if arch not in ['S', 'XS', 'XXS']:
-            raise ValueError("arch must be 'X', 'XS', 'XXS'")
+            raise ValueError("arch must be 'S', 'XS', 'XXS'")
 
         arch = ViTArch[arch]
         self.conv3x3 = layers.Conv2D(kernel_size= 3, filters= arch[0], strides= 2, padding= 'same')
