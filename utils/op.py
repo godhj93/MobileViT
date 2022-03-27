@@ -23,7 +23,7 @@ class Trainer:
         self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
-        self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.01)
+        self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
         
         #Tensorboard
@@ -58,7 +58,7 @@ class Trainer:
         self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy('test_accuracy')
       
         for e in range(self._epochs):
-            print(f"\nEPOCHS: {e+1}/{self._epochs}")
+            print(f"\nEPOCH: {e+1}/{self._epochs}")
             
             train_bar = self.progress_bar('train')
             for x,y in train_bar:
