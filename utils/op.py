@@ -5,7 +5,7 @@ from utils.data import data_load
 from tensorflow.keras.optimizers import SGD
 import copy
 from datetime import datetime
-
+import tensorflow_addons as tfa
 class Trainer:
     '''
     Train a Neural Network
@@ -23,7 +23,7 @@ class Trainer:
         self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
-        self._optimizer = SGD(nesterov=True, momentum=0.9, learning_rate = self.LR_Scheduler())
+        self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.01)
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
         
         #Tensorboard
@@ -34,11 +34,8 @@ class Trainer:
         self.test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
     def LR_Scheduler(self):
-        STEPS = len(self.train_ds) # Stpes in one epoch
-        B1 = STEPS*(0.5*self._epochs)
-        B2 = STEPS*(0.75*self._epochs)
-        boundaries, values = [B1,B2], [1e-3,1e-4,1e-5]
-        return tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries=boundaries, values=values)
+        
+        return LearningRateScheduler()
         
     def progress_bar(self, dataset):
         if dataset == 'train':
@@ -48,13 +45,12 @@ class Trainer:
         else:
             raise ValueError("dataset must be 'train' or 'test'")
 
-        
+    
 
     
     def train(self):
         print(f"Initializing...")
         
-  
         self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
         self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy('train_accuracy')
 
@@ -67,7 +63,7 @@ class Trainer:
             train_bar = self.progress_bar('train')
             for x,y in train_bar:
                 self.train_step(x,y)
-                train_bar.set_description(f"Loss: {self.train_loss.result().numpy():.4f}, Acc: {self.train_accuracy.result().numpy():.4f}")
+                train_bar.set_description(f"Loss: {self.train_loss.result().numpy():.4f}, Acc: {self.train_accuracy.result().numpy():.4f}, Learning Rate: {self._optimizer._decayed_lr('float32').numpy()}")
             with self.train_summary_writer.as_default():
                 tf.summary.scalar('loss', self.train_loss.result(), step=e)
                 tf.summary.scalar('accuracy', self.train_accuracy.result(), step=e)
@@ -129,4 +125,25 @@ class Trainer:
         print(f'the model has been saved in {model_path}')
 
 
-    
+class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
+
+        def __init__(self, initial_learning_rate=0.0002):
+            
+
+            self.initial_learning_rate = initial_learning_rate
+            
+            
+            self.cosine_annealing = tf.keras.optimizers.schedules.CosineDecayRestarts(
+                initial_learning_rate=0.0002,
+                first_decay_steps=3000,
+                t_mul=1.0,
+                m_mul=1.0,
+                alpha=1e-5,
+                name=None
+    )
+
+        def __call__(self, step):
+            return tf.cond(step<=3000, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
+        
+        def linear_increasing(self, step):
+            return (0.002-0.0002)/3000*step + self.initial_learning_rate

@@ -45,33 +45,33 @@ class MobileViT(tf.keras.Model):
         self.logits = layers.Dense(classes, activation = tf.nn.softmax)
 
     def call(self, x):
-        
+       
         y = self.conv3x3(x)
-
+        
         y = self.MV1_1(y)
-
-        y = self.MV2_1(y)
-
+        
+        y = self.MV2_1(y)   
+        
         y = self.MV2_2(y)
-
+        
         y = self.MV2_3(y)        
-
+        
         y = self.MV3_1(y)
-
+        
         y = self.MViT_block_1(y)
-
+        
         y = self.MV4_1(y)
-
+        
         y = self.MViT_block_2(y)
-
+        
         y = self.MV5_1(y)
-
+        
         y = self.MViT_block_3(y)
-
+        
         y = self.point_conv1(y)
-
+        
         y = self.global_pool(y)
-
+        
         return self.logits(y)
     
     def model(self, input_shape):
@@ -163,9 +163,9 @@ class MViT_block(tf.keras.layers.Layer):
         self.local_rep_conv2 = layers.Conv2D(filters=self.p_dim, kernel_size=1, use_bias=False, activation=tf.nn.swish)
         #output : H W self.p_dim
 
-        self.reshape = layers.Reshape((N,P,self.p_dim))
+        self.reshape = layers.Reshape((-1,P,self.p_dim))
 
-        self.flatten = layers.Flatten()
+        # self.flatten = layers.Flatten()
         
         self.encoders = []
         for i in range(self.L):
@@ -174,7 +174,7 @@ class MViT_block(tf.keras.layers.Layer):
         self.concat = layers.Concatenate()
         
         
-        self.reshape2 = layers.Reshape((H,W,self.p_dim))
+        self.reshape2 = layers.Reshape((-1,W,self.p_dim))
 
         self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias= False, activation= tf.nn.swish)
         self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias= False, padding='same', activation= tf.nn.swish)
@@ -192,7 +192,7 @@ class MViT_block(tf.keras.layers.Layer):
         
         #Local representations
         y = self.local_rep_conv1(x)
-        y = self.local_rep_conv2(y)
+        y = self.local_rep_conv2(y) #H W d
         #####
         # Transformers as Convolutions(global representations)
         #   Unfold
