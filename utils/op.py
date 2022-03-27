@@ -134,7 +134,7 @@ class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
             
             
             self.cosine_annealing = tf.keras.optimizers.schedules.CosineDecayRestarts(
-                initial_learning_rate=0.0002,
+                initial_learning_rate=0.002,
                 first_decay_steps=3000,
                 t_mul=1.0,
                 m_mul=1.0,
