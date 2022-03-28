@@ -127,23 +127,24 @@ class Trainer:
 
 class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
 
-        def __init__(self, initial_learning_rate=0.0002):
+        def __init__(self, initial_learning_rate=0.0002,steps):
             
+            self.steps = steps
 
             self.initial_learning_rate = initial_learning_rate
             
             
             self.cosine_annealing = tf.keras.optimizers.schedules.CosineDecayRestarts(
                 initial_learning_rate=0.002,
-                first_decay_steps=3000,
+                first_decay_steps= self.steps,
                 t_mul=1.0,
-                m_mul=1.0,
+                m_mul=0.9,
                 alpha=1e-5,
                 name=None
     )
 
         def __call__(self, step):
-            return tf.cond(step<=3000, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
+            return tf.cond(step<=self.steps, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
         
         def linear_increasing(self, step):
-            return (0.002-0.0002)/3000*step + self.initial_learning_rate
+            return (0.002-0.0002)/(self.steps)*step + self.initial_learning_rate
