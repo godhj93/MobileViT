@@ -37,7 +37,7 @@ class Trainer:
 
     def LR_Scheduler(self):
         
-        return LearningRateScheduler(50000/ self.batch_size)
+        return LearningRateScheduler(initial_learning_rate=0.0002, steps=np.round(50000/ self.batch_size))
         
     def progress_bar(self, dataset):
         if dataset == 'train':
