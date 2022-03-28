@@ -129,7 +129,7 @@ class Trainer:
 
 class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
 
-        def __init__(self, initial_learning_rate=0.0002,steps):
+        def __init__(self, initial_learning_rate=0.0002,steps=3000):
             
             self.steps = steps
 
