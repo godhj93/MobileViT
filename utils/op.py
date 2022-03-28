@@ -20,6 +20,8 @@ class Trainer:
         batch_size: positive int
         '''
         super(Trainer, self).__init__()
+
+        self.batch_size = batch_size
         self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
@@ -35,7 +37,7 @@ class Trainer:
 
     def LR_Scheduler(self):
         
-        return LearningRateScheduler()
+        return LearningRateScheduler(len(self.train_ds)/ self.batch_size)
         
     def progress_bar(self, dataset):
         if dataset == 'train':
