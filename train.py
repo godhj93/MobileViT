@@ -22,7 +22,7 @@ def main():
     elif args.data == 'cifar100':
         classes =100
     else:
-        raise ValueErorr("Data must be cifar10 or cifar100")
+        raise ValueError("Data must be cifar10 or cifar100")
 
     model = MobileViT(arch=args.arch,classes=classes).model(input_shape=(args.size,args.size,3))
     print(model.summary())
