@@ -1,5 +1,6 @@
 from logging.config import valid_ident
 import tensorflow as tf
+import numpy as np
 from tqdm import tqdm
 from utils.data import data_load
 from tensorflow.keras.optimizers import SGD
@@ -25,7 +26,8 @@ class Trainer:
         self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
-        self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
+        #self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
+        self._optimizer = SGD(momentum=0.9, nesterov=True, learning_rate = self.LR_Scheduler())#, weight_decay=1e-5)
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
         
         #Tensorboard
@@ -37,7 +39,7 @@ class Trainer:
 
     def LR_Scheduler(self):
         
-        return LearningRateScheduler(initial_learning_rate=0.0002, steps=np.round(50000/ self.batch_size))
+        return LearningRateScheduler(initial_learning_rate=0.0002, steps=np.ceil(50000/ self.batch_size))
         
     def progress_bar(self, dataset):
         if dataset == 'train':
@@ -137,16 +139,17 @@ class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
             
             
             self.cosine_annealing = tf.keras.optimizers.schedules.CosineDecayRestarts(
-                initial_learning_rate=0.002,
+                initial_learning_rate=1e-3,
                 first_decay_steps= self.steps,
                 t_mul=1.0,
-                m_mul=0.9,
-                alpha=1e-5,
+                m_mul=1.0,
+                alpha=1e-4,
                 name=None
     )
 
         def __call__(self, step):
-            return tf.cond(step<=self.steps, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
+            #return tf.cond(step<=self.steps, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
+            return self.cosine_annealing(step)
         
         def linear_increasing(self, step):
             return (0.002-0.0002)/(self.steps)*step + self.initial_learning_rate
