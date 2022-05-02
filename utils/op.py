@@ -11,9 +11,9 @@ class Trainer:
     '''
     Train a Neural Network
     Author: H.J Shin
-    Date: 2022.02.14
+    Date: 2022.05.02
     '''
-    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256, DEBUG=False):
+    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256, name='MODEL', DEBUG=False):
         '''
         model: model for training.
         dataset: cifar10 or cifar100.
@@ -22,6 +22,7 @@ class Trainer:
         '''
         super(Trainer, self).__init__()
 
+        self.name = name
         self.batch_size = batch_size
         self._model = copy.deepcopy(model)
         self._epochs = epochs
@@ -29,11 +30,12 @@ class Trainer:
         #self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
         self._optimizer = SGD(momentum=0.9, nesterov=True, learning_rate = self.LR_Scheduler())#, weight_decay=1e-5)
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
-        
-        #Tensorboard
         self.time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        train_log_dir = 'logs/gradient_tape/' + self.time + '/train'
-        test_log_dir = 'logs/gradient_tape/' + self.time + '/test'
+        self.save_path = './models/' + self.time[:10] + '/' + self.name + self.time[10:] + '/'
+        self.ckpt_path = './ckpt/' + self.time[:10] + '/' + self.name + self.time[10:] + '/'
+        #Tensorboard
+        train_log_dir = 'logs/' + self.time[:10] + '/' + self.name + self.time[10:] + '/train'
+        test_log_dir = 'logs/' + self.time[:10] + '/' + self.name + self.time[10:] + '/test'
         self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
         self.test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
@@ -60,7 +62,8 @@ class Trainer:
 
         self.test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
         self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy('test_accuracy')
-      
+
+        best_acc = 0
         for e in range(self._epochs):
             print(f"\nEPOCH: {e+1}/{self._epochs}")
             
@@ -80,6 +83,10 @@ class Trainer:
                 tf.summary.scalar('loss', self.test_loss.result(), step=e)
                 tf.summary.scalar('accuracy', self.test_accuracy.result(), step=e)
 
+            if best_acc < self.test_accuracy.result().numpy():
+                self._model.save_weights(self.ckpt_path)
+                print(f"The best accuracy has been updated {self.test_accuracy.result().numpy():.4f}... Save checkpoint...")
+                best_acc = self.test_accuracy.result().numpy()
             self.reset_metric()
         
         print(f"Training is completed.")
@@ -114,19 +121,10 @@ class Trainer:
         self.test_accuracy.update_state(y, y_hat)
         self.test_loss.update_state(loss)
 
-    def save_weights(self, name):
+    def save_model(self):
 
-        model_path = './models/' + name + '_' + self.time +'.h5'
-
-        self._model.save_weights(model_path)
-        print(f'the model weights has been saved in {model_path}')
-
-    def save_model(self, name):
-
-        model_path = './models/' + name + '_' + self.time
-
-        self._model.save(model_path)
-        print(f'the model has been saved in {model_path}')
+        self._model.save(self.save_path)
+        print(f'the model has been saved in {self.save_path}')
 
 
 class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
