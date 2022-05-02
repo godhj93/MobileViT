@@ -23,13 +23,13 @@ def main():
     elif args.data == 'cifar100':
         classes =100
     else:
-        raise ValueError("Data must be cifar10 or cifar100")
+        raise ValueErorr("Data must be cifar10 or cifar100")
 
     model = MobileViT(arch=args.arch,classes=classes).model(input_shape=(args.size,args.size,3))
 #    model = MobileNetv1(classes=classes).model(input_shape=(256,256,3))
     # model.build(input_shape=(None,256,256,3))
     print(model.summary())
-    trainer = Trainer(model, epochs=args.ep, batch_size=args.bs, size=args.size, name=args.name ,DEBUG=True)
+    trainer = Trainer(model, epochs=args.ep, batch_size=args.bs, size=args.size, name=args.name ,DEBUG=False)
     trainer.train()
     
     
