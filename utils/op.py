@@ -24,7 +24,7 @@ class Trainer:
 
         self.name = name
         self.batch_size = batch_size
-        self._model = model        
+        self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
         #self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
