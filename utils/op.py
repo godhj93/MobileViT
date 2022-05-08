@@ -13,7 +13,7 @@ class Trainer:
     Author: H.J Shin
     Date: 2022.05.02
     '''
-    def __init__(self, model, dataset='cifar10', epochs=50, batch_size= 16, size=256, name='MODEL', DEBUG=False):
+    def __init__(self, model, dataset, epochs, batch_size, size, name='MODEL', DEBUG=False):
         '''
         model: model for training.
         dataset: cifar10 or cifar100.
@@ -24,7 +24,7 @@ class Trainer:
 
         self.name = name
         self.batch_size = batch_size
-        self._model = copy.deepcopy(model)
+        self._model = model        
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
         #self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
@@ -89,8 +89,10 @@ class Trainer:
                 best_acc = self.test_accuracy.result().numpy()
             self.reset_metric()
         
-        print(f"Training is completed.")
+
         
+        print(f"Training is completed.")
+        self.save_model()
     
     def reset_metric(self):
 

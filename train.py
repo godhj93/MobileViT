@@ -4,6 +4,7 @@ import argparse
 from utils.nets.MobileViT import MobileViT
 from utils.nets.DenseNet import DenseNet
 from utils.nets.MobileNet import MobileNetv1
+from utils.nets.Binary_DenseNet import BinaryDenseNet
 gpus = tf.config.experimental.list_physical_devices("GPU")
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu,True)
@@ -26,10 +27,7 @@ def main():
         raise ValueErorr("Data must be cifar10 or cifar100")
 
     model = MobileViT(arch=args.arch,classes=classes).model(input_shape=(args.size,args.size,3))
-#    model = MobileNetv1(classes=classes).model(input_shape=(256,256,3))
-    # model.build(input_shape=(None,256,256,3))
-    print(model.summary())
-    trainer = Trainer(model, epochs=args.ep, batch_size=args.bs, size=args.size, name=args.name ,DEBUG=False)
+    trainer = Trainer(model, dataset=args.data, epochs=args.ep, batch_size=args.bs, size=args.size, name=args.name ,DEBUG=True)
     trainer.train()
     
     
