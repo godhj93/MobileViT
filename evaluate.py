@@ -10,6 +10,7 @@ for gpu in gpus:
 parser = argparse.ArgumentParser('Evaluate MobileViT | Dataset : CIFAR 10')
 parser.add_argument("--arch", default='S', type=str,help="Architecture: [S, XS, XSS]")
 parser.add_argument("--model")
+parser.add_argument("--data", default='cifar10')
 args = parser.parse_args()
 
 def test():
@@ -19,7 +20,7 @@ def test():
     model = tf.keras.models.load_model(args.model)
     print(model.summary())
 
-    _, test_ds = data_load(dataset='cifar10', batch_size=32, size=256)
+    _, test_ds = data_load(dataset=args.data, batch_size=32, size=256)
 
     model.compile(
         loss = Crossentropy(),
