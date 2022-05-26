@@ -2,9 +2,6 @@ import tensorflow as tf
 from utils.op import Trainer
 import argparse
 from utils.nets.MobileViT import MobileViT
-from utils.nets.DenseNet import DenseNet
-from utils.nets.MobileNet import MobileNetv1
-from utils.nets.Binary_DenseNet import BinaryDenseNet
 gpus = tf.config.experimental.list_physical_devices("GPU")
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu,True)
@@ -24,7 +21,7 @@ def main():
     elif args.data == 'cifar100':
         classes =100
     else:
-        raise ValueErorr("Data must be cifar10 or cifar100")
+        raise ValueError("Data must be cifar10 or cifar100")
 
     model = MobileViT(arch=args.arch,classes=classes).model(input_shape=(args.size,args.size,3))
     trainer = Trainer(model, dataset=args.data, epochs=args.ep, batch_size=args.bs, size=args.size, name=args.name ,DEBUG=False)
