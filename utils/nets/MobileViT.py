@@ -163,6 +163,7 @@ class MViT_block(tf.keras.layers.Layer):
         self.local_rep_conv2 = layers.Conv2D(filters=self.p_dim, kernel_size=1, use_bias=False, activation=tf.nn.swish)
         #output : H W self.p_dim
 
+        
         self.reshape = layers.Reshape((-1,P,self.p_dim))
 
         # self.flatten = layers.Flatten()
@@ -178,39 +179,96 @@ class MViT_block(tf.keras.layers.Layer):
 
         self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias= False, activation= tf.nn.swish)
         self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias= False, padding='same', activation= tf.nn.swish)
+        
+        self.fold = MViT_Fold(H,W,C, self.w)
 
-    def get_config(self):
-        config = super().get_config()
-        config.update({         
-            "dim": self.p_dim,
-            "L": self.L,
-            "n": self.n,
-        })
-        return config
-
+        self.temp_list = []
+    
     def call(self, x):
         
         #Local representations
         y = self.local_rep_conv1(x)
-        y = self.local_rep_conv2(y) #H W d
+        conv_feature = self.local_rep_conv2(y) 
+        _, _, _, d = conv_feature.shape
+        
         #####
         # Transformers as Convolutions(global representations)
         #   Unfold
-        y = self.reshape(y)
+        y = self.extract_patches(conv_feature)
+        extracted_patch_shape = y.shape
+        # patches = tf.image.extract_patches(y, sizes=[1, self.h, self.w, 1], strides=[1, self.h, self.w, 1], padding='VALID', rates=[1,1,1,1])
+        y = tf.reshape(y, [-1, self.h, self.w, d])
+        
         #   Transformer Encoder
         for i in range(self.L): 
             y = self.encoders[i](y)
         #   Fold
-        y = self.reshape2(y)
-        #####
+        y = tf.reshape(y, (-1, extracted_patch_shape[1], extracted_patch_shape[2], extracted_patch_shape[3]))
+        y = self.extract_patches_inverse(conv_feature,y)
+        
+        # y = self.fold(y)
+        
 
         #Fusions
         y = self.point_conv(y)
+        
         y = self.concat([y,x])
         
         return self.conv(y)
         
+    
+    '''
+    Ref: https://stackoverflow.com/questions/44047753/reconstructing-an-image-after-using-extract-image-patches
+    '''
+    @tf.function
+    def extract_patches(self,x):
+        return tf.image.extract_patches(
+            x,
+            (1, self.h, self.w, 1),
+            (1, self.h, self.w, 1),
+            (1, 1, 1, 1),
+            padding="VALID"
+        )
+    @tf.function
+    def extract_patches_inverse(self,x, y):
+        _x = tf.zeros_like(x)
+        _y = self.extract_patches(_x)
+        grad = tf.gradients(_y, _x)[0]
+        # Divide by grad, to "average" together the overlapping patches
+        # otherwise they would simply sum up
+        return tf.gradients(_y, _x, grad_ys=y)[0] / grad
+    
+class MViT_Fold(tf.keras.layers.Layer):
+    '''
+    Fold part in MobileViT Block
+    Author: H.J. Shin
+    Date: 2022.05.26
+    '''
+    def __init__(self, H,W,d, patch_size):
+        super(MViT_Fold, self).__init__()
 
+        self.H, self.W, self.d, self.patch_size =  H, W, d, patch_size
+        print(f"MViT_Fold is going to process input shape:{self.H, self.W, self.d}, patch_size: {self.patch_size}")
+        
+    def build(self, input_shape):
+        self.batch_size,_,_,_ = input_shape
+        print(f"inputshape:{input_shape}")
+    
+    
+    def call(self, features):
+        
+        row_list = []
+        self.patch_idx = int(self.W/self.patch_size)
+        
+        for i in range(self.patch_idx):
+          
+            row_list.append(tf.concat([patch for patch in features[i*self.patch_idx:(i+1)*self.patch_idx]], axis=1))
+            
+            
+        merged = tf.concat(row_list, axis=0)
+        return tf.expand_dims(merged, axis=0)
+    
+    
 class T_encoder(tf.keras.layers.Layer):
     '''
     Transformer Encoder
