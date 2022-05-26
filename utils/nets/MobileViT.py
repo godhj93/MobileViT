@@ -238,36 +238,6 @@ class MViT_block(tf.keras.layers.Layer):
         # otherwise they would simply sum up
         return tf.gradients(_y, _x, grad_ys=y)[0] / grad
     
-class MViT_Fold(tf.keras.layers.Layer):
-    '''
-    Fold part in MobileViT Block
-    Author: H.J. Shin
-    Date: 2022.05.26
-    '''
-    def __init__(self, H,W,d, patch_size):
-        super(MViT_Fold, self).__init__()
-
-        self.H, self.W, self.d, self.patch_size =  H, W, d, patch_size
-        print(f"MViT_Fold is going to process input shape:{self.H, self.W, self.d}, patch_size: {self.patch_size}")
-        
-    def build(self, input_shape):
-        self.batch_size,_,_,_ = input_shape
-        print(f"inputshape:{input_shape}")
-    
-    
-    def call(self, features):
-        
-        row_list = []
-        self.patch_idx = int(self.W/self.patch_size)
-        
-        for i in range(self.patch_idx):
-          
-            row_list.append(tf.concat([patch for patch in features[i*self.patch_idx:(i+1)*self.patch_idx]], axis=1))
-            
-            
-        merged = tf.concat(row_list, axis=0)
-        return tf.expand_dims(merged, axis=0)
-    
     
 class T_encoder(tf.keras.layers.Layer):
     '''
