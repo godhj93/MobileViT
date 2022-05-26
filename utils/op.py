@@ -27,8 +27,8 @@ class Trainer:
         self._model = copy.deepcopy(model)
         self._epochs = epochs
         self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
-        #self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
-        self._optimizer = SGD(momentum=0.9, nesterov=True, learning_rate = self.LR_Scheduler())#, weight_decay=1e-5)
+        self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
+        # self._optimizer = SGD(momentum=0.9, nesterov=True, learning_rate = self.LR_Scheduler())#, weight_decay=1e-5)
         self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
         self.time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.save_path = './models/' + self.time[:10] + '/' + self.name + self.time[10:] + '/'
@@ -139,17 +139,17 @@ class LearningRateScheduler(tf.keras.optimizers.schedules.LearningRateSchedule):
             
             
             self.cosine_annealing = tf.keras.optimizers.schedules.CosineDecayRestarts(
-                initial_learning_rate=1e-3,
+                initial_learning_rate=0.002,
                 first_decay_steps= self.steps,
                 t_mul=1.0,
                 m_mul=1.0,
-                alpha=1e-4,
+                alpha=2e-4,
                 name=None
     )
 
         def __call__(self, step):
-            #return tf.cond(step<=self.steps, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
-            return self.cosine_annealing(step)
+            return tf.cond(step<=self.steps, lambda: self.linear_increasing(step) ,lambda: self.cosine_annealing(step) )
+            # return self.cosine_annealing(step)
         
         def linear_increasing(self, step):
             return (0.002-0.0002)/(self.steps)*step + self.initial_learning_rate

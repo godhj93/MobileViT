@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 import tensorflow as tf
 from tensorflow.keras import layers
 
@@ -138,7 +137,7 @@ class MViT_block(tf.keras.layers.Layer):
     MobileViT Block
     https://arxiv.org/abs/2110.02178.pdf
     Author: H.J. Shin
-    Date: 2022.02.12
+    Date: 2022.05.26
     '''
     def __init__(self, dim, n=3, L=1):
         '''
@@ -180,7 +179,7 @@ class MViT_block(tf.keras.layers.Layer):
         self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias= False, activation= tf.nn.swish)
         self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias= False, padding='same', activation= tf.nn.swish)
         
-        self.fold = MViT_Fold(H,W,C, self.w)
+        
 
         self.temp_list = []
     
@@ -205,9 +204,7 @@ class MViT_block(tf.keras.layers.Layer):
         #   Fold
         y = tf.reshape(y, (-1, extracted_patch_shape[1], extracted_patch_shape[2], extracted_patch_shape[3]))
         y = self.extract_patches_inverse(conv_feature,y)
-        
-        # y = self.fold(y)
-        
+       
 
         #Fusions
         y = self.point_conv(y)
