@@ -2,7 +2,7 @@ from logging.config import valid_ident
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-from utils.data import data_load
+from utils.data import data_loader
 from tensorflow.keras.optimizers import SGD
 import copy
 from datetime import datetime
@@ -26,10 +26,11 @@ class Trainer:
         self.batch_size = batch_size
         self._model = copy.deepcopy(model)
         self._epochs = epochs
-        self.train_ds, self.test_ds = data_load(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
+        self.data_loader = data_loader(dataset=dataset, batch_size=batch_size, size=size, DEBUG=DEBUG)
+        self.train_ds, self.test_ds = self.data_loader.load()
         self._optimizer = tfa.optimizers.AdamW(learning_rate = self.LR_Scheduler(), weight_decay=0.0001)
         # self._optimizer = SGD(momentum=0.9, nesterov=True, learning_rate = self.LR_Scheduler())#, weight_decay=1e-5)
-        self.CrossEntropy = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+        self.CrossEntropy = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.1)
         self.time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.save_path = './models/' + self.time[:10] + '/' + self.name + self.time[10:] + '/'
         self.ckpt_path = './ckpt/' + self.time[:10] + '/' + self.name + self.time[10:] + '/'
@@ -58,10 +59,10 @@ class Trainer:
         print(f"Initializing...")
         
         self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy('train_accuracy')
+        self.train_accuracy = tf.keras.metrics.CategoricalAccuracy('train_accuracy')
 
         self.test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
-        self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy('test_accuracy')
+        self.test_accuracy = tf.keras.metrics.CategoricalAccuracy('test_accuracy')
 
         best_acc = 0
         for e in range(self._epochs):
@@ -119,7 +120,6 @@ class Trainer:
               
         y_hat = self._model(x, training=False)
         loss = self.CrossEntropy(y,y_hat)
-
         self.test_accuracy.update_state(y, y_hat)
         self.test_loss.update_state(loss)
 
