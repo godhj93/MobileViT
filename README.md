@@ -23,7 +23,7 @@ python train.py --ep 50 --bs 16 --data cifar10 --arch [S, XS, XXS] --size [64, 1
  - [x]  Learning rate scheduler(including cosine annealing)
  - [x]  Label Smoothing(0.1)  
  - [ ]  Multi-Scaler Training(Adaptive Batch size)
- - [ ]  L2 Weight Decay  
+ - [x]  L2 Weight Decay  
  - [ ]  Change Data augmentation from complex to simple one 
  
 
