@@ -105,11 +105,11 @@ class InvertedResidual(tf.keras.layers.Layer):
         self.bn3 = layers.BatchNormalization()
         self.add = layers.Add()
         
-        self.conv1 = layers.DepthwiseConv2D(kernel_size=3, strides=self.strides, padding='same', use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        self.conv1 = layers.DepthwiseConv2D(kernel_size=3, strides=self.strides, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
         self.swish = tf.nn.swish
 
-        self.point_conv1 = layers.Conv2D(filters=C, kernel_size=1, strides=1, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.point_conv2 = layers.Conv2D(filters=self.filters, kernel_size=1, strides=1, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        self.point_conv1 = layers.Conv2D(filters=C, kernel_size=1, strides=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        self.point_conv2 = layers.Conv2D(filters=self.filters, kernel_size=1, strides=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
 
     def call(self, x):
 
@@ -149,8 +149,8 @@ class MViT_block(tf.keras.layers.Layer):
         P = self.w * self.h
         N = H*W//P
         
-        self.local_rep_conv1 = layers.Conv2D(filters=self.p_dim, kernel_size=3, padding='same', use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
-        self.local_rep_conv2 = layers.Conv2D(filters=self.p_dim, kernel_size=1, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
+        self.local_rep_conv1 = layers.Conv2D(filters=self.p_dim, kernel_size=3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
+        self.local_rep_conv2 = layers.Conv2D(filters=self.p_dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         #output : H W self.p_dim
 
         
@@ -167,8 +167,8 @@ class MViT_block(tf.keras.layers.Layer):
         
         self.reshape2 = layers.Reshape((-1,W,self.p_dim))
 
-        self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001), activation= tf.nn.swish)
-        self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001), padding='same', activation= tf.nn.swish)
+        self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation= tf.nn.swish)
+        self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), padding='same', activation= tf.nn.swish)
     
     def call(self, x):
         
@@ -243,8 +243,8 @@ class T_encoder(tf.keras.layers.Layer):
         
         self.add = layers.Add()
 
-        self.MHA = layers.MultiHeadAttention(num_heads= self.num_heads, key_dim= self.p_dim, value_dim=None, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.MLP = layers.Dense(C, activation=tf.nn.swish, use_bias=True, kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        self.MHA = layers.MultiHeadAttention(num_heads= self.num_heads, key_dim= self.p_dim, value_dim=None, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        self.MLP = layers.Dense(C, activation=tf.nn.swish, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
 
     def call(self, x):
         

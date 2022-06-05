@@ -2,7 +2,7 @@ import tensorflow as tf
 from utils.op import Trainer
 import argparse
 from utils.nets.MobileViT import MobileViT
-from utils.nets.MobileNet import MobileNetv1
+# from utils.nets.MobileNet import MobileNetv1
 gpus = tf.config.experimental.list_physical_devices("GPU")
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu,True)
