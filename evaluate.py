@@ -14,6 +14,7 @@ import numpy as np
 parser = argparse.ArgumentParser('Evaluate MobileViT | Dataset : CIFAR 10')
 parser.add_argument("--arch", default='S', type=str,help="Architecture: [S, XS, XSS]")
 parser.add_argument("--model")
+parser.add_argument("--bs", default=1)
 parser.add_argument("--size", default=256)
 parser.add_argument("--data", default='cifar10')
 parser.add_argument("--device", default='gpu')
@@ -27,7 +28,7 @@ def test():
     print(model.summary())
 
     
-    test_data_loader = data_loader(dataset=args.data, batch_size=1, size=args.size, DEBUG=False)
+    test_data_loader = data_loader(dataset=args.data, batch_size=int(args.bs), size=args.size, DEBUG=False)
     _, test_ds = test_data_loader.load()
     # model.compile(
     #     loss = Crossentropy(from_logits=False,label_smoothing=0.1),
