@@ -128,7 +128,7 @@ class MViT_block(tf.keras.layers.Layer):
     MobileViT Block
     https://arxiv.org/abs/2110.02178.pdf
     Author: H.J. Shin
-    Date: 2022.05.26
+    Date: 2022.06.11
     '''
     def __init__(self, dim, n=3, L=1):
         '''
@@ -154,6 +154,7 @@ class MViT_block(tf.keras.layers.Layer):
         self.local_rep_conv2 = layers.Conv2D(filters=self.dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         
         self.reshape1 = layers.Reshape([N, P*self.dim])
+        
         self.get_patches = extract_patches()
         self.reconstuct = patches_to_image(H,C)
         
@@ -175,12 +176,12 @@ class MViT_block(tf.keras.layers.Layer):
         y = self.local_rep_conv2(y)
         
         #Unfold
-        
         patches = self.get_patches(y) # patches shape -> (H/self.h, W/self.w, self.dim*4)
         print(f"patche shape {patches.shape}")
         
         _, num_patches, patch_h , patch_w, dim_features = patches.shape
-        y = tf.reshape(patches, (-1, num_patches, patch_h*patch_w*dim_features))
+        # y = tf.reshape(patches, (-1, num_patches, patch_h*patch_w*dim_features))
+        y = self.reshape1(patches)
         # y = self.reshape1(patches)
         print(y.shape)
            
@@ -198,6 +199,7 @@ class MViT_block(tf.keras.layers.Layer):
         print(y.shape)
         
         y = tf.reshape(y, (-1,num_patches, patch_h, patch_w, dim_features))
+        
         print(y.shape)
         print("hi")
         
@@ -210,11 +212,6 @@ class MViT_block(tf.keras.layers.Layer):
         
         return y
   
-  
-
-        
-  
-
 '''
 Ref: https://stackoverflow.com/questions/44047753/reconstructing-an-image-after-using-extract-image-patches
 '''
