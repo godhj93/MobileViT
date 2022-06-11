@@ -179,7 +179,7 @@ class MViT_block(tf.keras.layers.Layer):
         patches = self.get_patches(y) # patches shape -> (H/self.h, W/self.w, self.dim*4)
         print(f"patche shape {patches.shape}")
         
-        num_patches, patch_h , patch_w, dim_features = patches.shape
+        _, num_patches, patch_h , patch_w, dim_features = patches.shape
         y = tf.reshape(patches, (-1, num_patches, patch_h*patch_w*dim_features))
         # y = self.reshape1(patches)
         print(y.shape)
@@ -226,14 +226,23 @@ class extract_patches(tf.keras.layers.Layer):
         self.p = 2
         self.pad = [[0,0],[0,0]]
         
+        # self.reshape = layers.Reshape([(32//2)**2, 2,2, 144])
+       
+    def build(self, input_shape):
+        
+        self.reshape = layers.Reshape([(input_shape[1]//2)**2, 2,2, input_shape[-1]])
+        self.h, self.c = input_shape[1], input_shape[-1]
     def call(self,x):
         
         self.h, self.c = x.shape[1], x.shape[-1]
-        
+        print(f"1: {self.h, self.c}")
+        print(f"2: {x.shape}")
         patches = tf.space_to_batch_nd(x,[self.p,self.p],self.pad)
         patches = tf.split(patches,self.p*self.p,0)
         patches = tf.stack(patches,3)
-        patches = tf.reshape(patches,[(self.h//self.p)**2,self.p,self.p,self.c])
+        print(f"qweasdzc: {patches.shape}")
+        patches = self.reshape(patches)
+        #patches = tf.reshape(patches,[(self.h//self.p)**2,self.p,self.p,self.c])
         return patches
 
 
