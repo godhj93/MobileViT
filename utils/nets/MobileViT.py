@@ -153,9 +153,9 @@ class MViT_block(tf.keras.layers.Layer):
         self.local_rep_conv1 = layers.Conv2D(filters=self.dim, kernel_size=3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         self.local_rep_conv2 = layers.Conv2D(filters=self.dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         
-        self.reshape1 = layers.Reshape((256, 4*144))
+        self.reshape1 = layers.Reshape([N, P*self.dim])
         self.get_patches = extract_patches()
-        self.reconstuct = patches_to_image()
+        self.reconstuct = patches_to_image(H,C)
         
         self.encoders = []
         for _ in range(self.L):
@@ -201,7 +201,7 @@ class MViT_block(tf.keras.layers.Layer):
         print(y.shape)
         print("hi")
         
-        y = self.reconstuct(y, H, dim_features)
+        y = self.reconstuct(y)
         print(y.shape)
         
         y = self.fusion_conv1(y)
@@ -232,6 +232,7 @@ class extract_patches(tf.keras.layers.Layer):
         
         self.reshape = layers.Reshape([(input_shape[1]//2)**2, 2,2, input_shape[-1]])
         self.h, self.c = input_shape[1], input_shape[-1]
+        
     def call(self,x):
         
         self.h, self.c = x.shape[1], x.shape[-1]
@@ -248,23 +249,39 @@ class extract_patches(tf.keras.layers.Layer):
 
 class patches_to_image(tf.keras.layers.Layer):
  
-    def __init__(self):
+    def __init__(self, H, C):
         super(patches_to_image, self).__init__()
         
         self.pad = [[0,0],[0,0]]
         self.p = 2
-        
-    def call(self, patches, h,c):
-        
-        self.h = h
-        self.c = c
-        
-        patches_proc = tf.reshape(patches,[1,self.h//self.p,self.h//self.p,self.p*self.p,self.c])
-        patches_proc = tf.split(patches_proc,self.p*self.p,3)
-        patches_proc = tf.stack(patches_proc,axis=0)
-        patches_proc = tf.reshape(patches_proc,[self.p*self.p,self.h//self.p,self.h//self.p,self.c])
+        self.h = H
+        self.channel = C
 
-        reconstructed = tf.batch_to_space(patches_proc,[self.p, self.p],self.pad)
+    def build(self, input_shape):
+        
+        B, Num_patches, Patch_H, Patch_W, C = input_shape
+
+        self.c = C
+        self.reshape1 = layers.Reshape([self.h//self.p, self.h//self.p, self.p*self.p, self.c])
+        self.reshape2 = layers.Reshape([self.p*self.p,self.h//self.p,self.h//self.p,self.c])
+        self.reshape3 = layers.Reshape([self.h, self.h, self.c])
+        
+    def call(self, patches):
+
+        print(patches.shape)
+        patches_proc = self.reshape1(patches)
+        print(patches.shape)
+        patches_proc = tf.split(patches_proc,self.p*self.p,3)
+        
+        patches_proc = tf.stack(patches_proc,axis=1)
+        print(patches.shape)
+        patches_proc = self.reshape2(patches_proc)
+        
+        print(f"hj: {patches_proc}")
+        
+        reconstructed = self.reshape3(patches_proc)
+        print(f"hj: {reconstructed}")
+        print(reconstructed.shape)
         return reconstructed
 
 
