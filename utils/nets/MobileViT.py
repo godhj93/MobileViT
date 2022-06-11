@@ -148,8 +148,7 @@ class MViT_block(tf.keras.layers.Layer):
         B, H, W, C = input_shape
         P = self.w * self.h
         N = H*W//P
-        print("asdasd")
-        print(N, P, self.dim)
+        
         self.local_rep_conv1 = layers.Conv2D(filters=self.dim, kernel_size=3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         self.local_rep_conv2 = layers.Conv2D(filters=self.dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         
@@ -170,41 +169,28 @@ class MViT_block(tf.keras.layers.Layer):
     def call(self, x):
         
         B,H,W,C = x.shape
-        print(x.shape)
+      
         #Local representations
         y = self.local_rep_conv1(x)
         y = self.local_rep_conv2(y)
         
         #Unfold
         patches = self.get_patches(y) # patches shape -> (H/self.h, W/self.w, self.dim*4)
-        print(f"patche shape {patches.shape}")
-        
+       
         _, num_patches, patch_h , patch_w, dim_features = patches.shape
-        # y = tf.reshape(patches, (-1, num_patches, patch_h*patch_w*dim_features))
+        
         y = self.reshape1(patches)
-        # y = self.reshape1(patches)
-        print(y.shape)
-           
-        
-        # y = tf.reshape(y, (-1,num_patches, patch_h*patch_w, dim_features))    
-        
-        
         y = tf.transpose(y, perm=[0,2,1])
         
         for encoder in self.encoders:
             y = encoder(y)
-            print(f"encoder: {y.shape}")
             
         y = tf.transpose(y, perm=[0,2,1])
-        print(y.shape)
-        
+       
         y = tf.reshape(y, (-1,num_patches, patch_h, patch_w, dim_features))
         
-        print(y.shape)
-        print("hi")
         
         y = self.reconstuct(y)
-        print(y.shape)
         
         y = self.fusion_conv1(y)
         y = self.concat([y,x])
@@ -223,8 +209,6 @@ class extract_patches(tf.keras.layers.Layer):
         self.p = 2
         self.pad = [[0,0],[0,0]]
         
-        # self.reshape = layers.Reshape([(32//2)**2, 2,2, 144])
-       
     def build(self, input_shape):
         
         self.reshape = layers.Reshape([(input_shape[1]//2)**2, 2,2, input_shape[-1]])
@@ -233,14 +217,12 @@ class extract_patches(tf.keras.layers.Layer):
     def call(self,x):
         
         self.h, self.c = x.shape[1], x.shape[-1]
-        print(f"1: {self.h, self.c}")
-        print(f"2: {x.shape}")
         patches = tf.space_to_batch_nd(x,[self.p,self.p],self.pad)
         patches = tf.split(patches,self.p*self.p,0)
         patches = tf.stack(patches,3)
-        print(f"qweasdzc: {patches.shape}")
+        
         patches = self.reshape(patches)
-        #patches = tf.reshape(patches,[(self.h//self.p)**2,self.p,self.p,self.c])
+        
         return patches
 
 
@@ -265,20 +247,17 @@ class patches_to_image(tf.keras.layers.Layer):
         
     def call(self, patches):
 
-        print(patches.shape)
+       
         patches_proc = self.reshape1(patches)
-        print(patches.shape)
+       
         patches_proc = tf.split(patches_proc,self.p*self.p,3)
         
         patches_proc = tf.stack(patches_proc,axis=1)
-        print(patches.shape)
+       
         patches_proc = self.reshape2(patches_proc)
         
-        print(f"hj: {patches_proc}")
-        
         reconstructed = self.reshape3(patches_proc)
-        print(f"hj: {reconstructed}")
-        print(reconstructed.shape)
+       
         return reconstructed
 
 
@@ -324,7 +303,6 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         self.num_heads = num_heads
         self.d_model = d_model
 
-        print(d_model, self.num_heads)
         assert d_model % self.num_heads == 0
 
         self.depth = d_model // self.num_heads
