@@ -148,11 +148,14 @@ class MViT_block(tf.keras.layers.Layer):
         B, H, W, C = input_shape
         P = self.w * self.h
         N = H*W//P
-        
+        print("asdasd")
+        print(N, P, self.dim)
         self.local_rep_conv1 = layers.Conv2D(filters=self.dim, kernel_size=3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         self.local_rep_conv2 = layers.Conv2D(filters=self.dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         
-        self.reshape1 = layers.Reshape((N,P*self.dim))
+        self.reshape1 = layers.Reshape((256, 4*144))
+        self.get_patches = extract_patches()
+        self.reconstuct = patches_to_image()
         
         self.encoders = []
         for _ in range(self.L):
@@ -160,11 +163,8 @@ class MViT_block(tf.keras.layers.Layer):
 
         self.concat = layers.Concatenate()
         
-        
-        self.reshape2 = layers.Reshape((-1,W,self.dim))
-
-        self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation= tf.nn.swish)
-        self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), padding='same', activation= tf.nn.swish)
+        self.fusion_conv1 = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation= tf.nn.swish)
+        self.fusion_conv2 = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), padding='same', activation= tf.nn.swish)
     
     def call(self, x):
         
@@ -176,39 +176,87 @@ class MViT_block(tf.keras.layers.Layer):
         
         #Unfold
         
-        patches = self.extract_patches(y) # patches shape -> (H/self.h, W/self.w, self.dim*4)
-        print(patches.shape)
-        N = int(H*W/4) # Number of patches
-        P = int(self.h * self.w) # in the paper,P=4
-        y = self.reshape1(patches)
+        patches = self.get_patches(y) # patches shape -> (H/self.h, W/self.w, self.dim*4)
+        print(f"patche shape {patches.shape}")
+        
+        num_patches, patch_h , patch_w, dim_features = patches.shape
+        y = tf.reshape(patches, (-1, num_patches, patch_h*patch_w*dim_features))
+        # y = self.reshape1(patches)
         print(y.shape)
+           
+        
+        # y = tf.reshape(y, (-1,num_patches, patch_h*patch_w, dim_features))    
+        
+        
         y = tf.transpose(y, perm=[0,2,1])
         
         for encoder in self.encoders:
             y = encoder(y)
             print(f"encoder: {y.shape}")
+            
+        y = tf.transpose(y, perm=[0,2,1])
+        print(y.shape)
+        
+        y = tf.reshape(y, (-1,num_patches, patch_h, patch_w, dim_features))
+        print(y.shape)
+        print("hi")
+        
+        y = self.reconstuct(y, H, dim_features)
+        print(y.shape)
+        
+        y = self.fusion_conv1(y)
+        y = self.concat([y,x])
+        y = self.fusion_conv2(y)
+        
+        return y
+  
+  
+
         
   
-    '''
-    Ref: https://stackoverflow.com/questions/44047753/reconstructing-an-image-after-using-extract-image-patches
-    '''
-    @tf.function
-    def extract_patches(self,x):
-        return tf.image.extract_patches(
-            images = x,
-            sizes = (1, self.h, self.w, 1),
-            strides = (1, self.h, self.w, 1),
-            rates = (1, 1, 1, 1),
-            padding="VALID"
-        )
-    @tf.function
-    def extract_patches_inverse(self,x, y):
-        _x = tf.zeros_like(x)
-        _y = self.extract_patches(_x)
-        grad = tf.gradients(_y, _x)[0]
-        # Divide by grad, to "average" together the overlapping patches
-        # otherwise they would simply sum up
-        return tf.gradients(_y, _x, grad_ys=y)[0] / grad
+
+'''
+Ref: https://stackoverflow.com/questions/44047753/reconstructing-an-image-after-using-extract-image-patches
+'''
+
+class extract_patches(tf.keras.layers.Layer):
+ 
+    def __init__(self):
+        super(extract_patches, self).__init__()
+        self.p = 2
+        self.pad = [[0,0],[0,0]]
+        
+    def call(self,x):
+        
+        self.h, self.c = x.shape[1], x.shape[-1]
+        
+        patches = tf.space_to_batch_nd(x,[self.p,self.p],self.pad)
+        patches = tf.split(patches,self.p*self.p,0)
+        patches = tf.stack(patches,3)
+        patches = tf.reshape(patches,[(self.h//self.p)**2,self.p,self.p,self.c])
+        return patches
+
+
+class patches_to_image(tf.keras.layers.Layer):
+ 
+    def __init__(self):
+        super(patches_to_image, self).__init__()
+        
+        self.pad = [[0,0],[0,0]]
+        self.p = 2
+        
+    def call(self, patches, h,c):
+        
+        self.h = h
+        self.c = c
+        
+        patches_proc = tf.reshape(patches,[1,self.h//self.p,self.h//self.p,self.p*self.p,self.c])
+        patches_proc = tf.split(patches_proc,self.p*self.p,3)
+        patches_proc = tf.stack(patches_proc,axis=0)
+        patches_proc = tf.reshape(patches_proc,[self.p*self.p,self.h//self.p,self.h//self.p,self.c])
+
+        reconstructed = tf.batch_to_space(patches_proc,[self.p, self.p],self.pad)
+        return reconstructed
 
 
 '''
@@ -309,20 +357,20 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         q = self.wq(q)  # (batch_size, seq_len, d_model)
         k = self.wk(k)  # (batch_size, seq_len, d_model)
         v = self.wv(v)  # (batch_size, seq_len, d_model)
-        print("ok")
+        
         q = self.split_heads(q, batch_size)  # (batch_size, num_heads, seq_len_q, depth)
         k = self.split_heads(k, batch_size)  # (batch_size, num_heads, seq_len_k, depth)
         v = self.split_heads(v, batch_size)  # (batch_size, num_heads, seq_len_v, depth)
-        print("ok")
+        
         # scaled_attention.shape == (batch_size, num_heads, seq_len_q, depth)
         # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
         scaled_attention, attention_weights = self.scaled_dot_product_attention(q, k, v)
-        print("ok")
+        
         scaled_attention = tf.transpose(scaled_attention, perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
-        print("ok")
+        
         concat_attention = tf.reshape(scaled_attention,
                                     (batch_size, -1, self.d_model))  # (batch_size, seq_len_q, d_model)
-        print("ok")
+        
         output = self.dense(concat_attention)  # (batch_size, seq_len_q, d_model)
-        print("ok")
+        
         return output, attention_weights
