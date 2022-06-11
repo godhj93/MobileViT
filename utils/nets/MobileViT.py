@@ -138,7 +138,7 @@ class MViT_block(tf.keras.layers.Layer):
         '''
         super(MViT_block, self).__init__()
 
-        self.p_dim = dim
+        self.dim = dim
         self.L = L
         self.n = n
         self.w, self.h = 2, 2 #Patch dimension w,h: w,h <= n
@@ -149,68 +149,56 @@ class MViT_block(tf.keras.layers.Layer):
         P = self.w * self.h
         N = H*W//P
         
-        self.local_rep_conv1 = layers.Conv2D(filters=self.p_dim, kernel_size=3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
-        self.local_rep_conv2 = layers.Conv2D(filters=self.p_dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
-        #output : H W self.p_dim
-
+        self.local_rep_conv1 = layers.Conv2D(filters=self.dim, kernel_size=3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
+        self.local_rep_conv2 = layers.Conv2D(filters=self.dim, kernel_size=1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation=tf.nn.swish)
         
-        self.reshape = layers.Reshape((-1,P,self.p_dim))
-
-        # self.flatten = layers.Flatten()
+        self.reshape1 = layers.Reshape((N,P*self.dim))
         
         self.encoders = []
-        for i in range(self.L):
-            self.encoders.append(T_encoder(num_heads=2, project_dim=self.p_dim))
+        for _ in range(self.L):
+            self.encoders.append(EncoderLayer(d_model=N, num_heads=2, dff= N ))
 
         self.concat = layers.Concatenate()
         
         
-        self.reshape2 = layers.Reshape((-1,W,self.p_dim))
+        self.reshape2 = layers.Reshape((-1,W,self.dim))
 
         self.point_conv = layers.Conv2D(filters= C, kernel_size= 1, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), activation= tf.nn.swish)
         self.conv = layers.Conv2D(filters= C, kernel_size= self.n, strides= 1, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001), padding='same', activation= tf.nn.swish)
     
     def call(self, x):
         
+        B,H,W,C = x.shape
+        print(x.shape)
         #Local representations
         y = self.local_rep_conv1(x)
-        conv_feature = self.local_rep_conv2(y) 
-        _, _, _, d = conv_feature.shape
+        y = self.local_rep_conv2(y)
         
-        #####
-        # Transformers as Convolutions(global representations)
-        #   Unfold
-        y = self.extract_patches(conv_feature)
-        extracted_patch_shape = y.shape
-        # patches = tf.image.extract_patches(y, sizes=[1, self.h, self.w, 1], strides=[1, self.h, self.w, 1], padding='VALID', rates=[1,1,1,1])
-        y = tf.reshape(y, [-1, self.h, self.w, d])
+        #Unfold
         
-        #   Transformer Encoder
-        for i in range(self.L): 
-            y = self.encoders[i](y)
-        #   Fold
-        y = tf.reshape(y, (-1, extracted_patch_shape[1], extracted_patch_shape[2], extracted_patch_shape[3]))
-        y = self.extract_patches_inverse(conv_feature,y)
-       
-
-        #Fusions
-        y = self.point_conv(y)
+        patches = self.extract_patches(y) # patches shape -> (H/self.h, W/self.w, self.dim*4)
+        print(patches.shape)
+        N = int(H*W/4) # Number of patches
+        P = int(self.h * self.w) # in the paper,P=4
+        y = self.reshape1(patches)
+        print(y.shape)
+        y = tf.transpose(y, perm=[0,2,1])
         
-        y = self.concat([y,x])
+        for encoder in self.encoders:
+            y = encoder(y)
+            print(f"encoder: {y.shape}")
         
-        return self.conv(y)
-        
-    
+  
     '''
     Ref: https://stackoverflow.com/questions/44047753/reconstructing-an-image-after-using-extract-image-patches
     '''
     @tf.function
     def extract_patches(self,x):
         return tf.image.extract_patches(
-            x,
-            (1, self.h, self.w, 1),
-            (1, self.h, self.w, 1),
-            (1, 1, 1, 1),
+            images = x,
+            sizes = (1, self.h, self.w, 1),
+            strides = (1, self.h, self.w, 1),
+            rates = (1, 1, 1, 1),
             padding="VALID"
         )
     @tf.function
@@ -221,45 +209,120 @@ class MViT_block(tf.keras.layers.Layer):
         # Divide by grad, to "average" together the overlapping patches
         # otherwise they would simply sum up
         return tf.gradients(_y, _x, grad_ys=y)[0] / grad
+
+
+'''
+Ref: https://www.tensorflow.org/text/tutorials/transformer#multi-head_attention
+'''
+class EncoderLayer(tf.keras.layers.Layer):
     
+    def __init__(self,*, d_model, num_heads, dff, rate=0.1):
+        super(EncoderLayer, self).__init__()
+
+        self.mha = MultiHeadAttention(d_model=d_model, num_heads=num_heads)
+        self.ffn = self.point_wise_feed_forward_network(d_model, dff)
+
+        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+
+        self.dropout1 = tf.keras.layers.Dropout(rate)
+        self.dropout2 = tf.keras.layers.Dropout(rate)
+
     
-class T_encoder(tf.keras.layers.Layer):
-    '''
-    Transformer Encoder
-    https://arxiv.org/pdf/2010.11929.pdf
-    Author: H.J. Shin
-    Date: 2022.02.12
-    '''
-    def __init__(self, num_heads, project_dim):
-        super(T_encoder, self).__init__()
-        self.p_dim = project_dim
+    def point_wise_feed_forward_network(self, d_model, dff):
+        return tf.keras.Sequential([
+                tf.keras.layers.Dense(dff, activation='relu'),  # (batch_size, seq_len, dff)
+                tf.keras.layers.Dense(d_model)  # (batch_size, seq_len, d_model)
+            ])
+    def call(self, x, training):
+        
+        attn_output, _ = self.mha(x, x, x)  # (batch_size, input_seq_len, d_model)
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(x + attn_output)  # (batch_size, input_seq_len, d_model)
+
+        ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        out2 = self.layernorm2(out1 + ffn_output)  # (batch_size, input_seq_len, d_model)
+
+        return out2
+
+        
+class MultiHeadAttention(tf.keras.layers.Layer):
+    def __init__(self,*, d_model, num_heads):
+        super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
-        
-    def build(self, input_shape):
-        
-        B,H,W,C = input_shape
-        self.norm1 = layers.LayerNormalization()
-        self.norm2 = layers.LayerNormalization()
-        
-        self.add = layers.Add()
+        self.d_model = d_model
 
-        self.MHA = layers.MultiHeadAttention(num_heads= self.num_heads, key_dim= self.p_dim, value_dim=None, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.MLP = layers.Dense(C, activation=tf.nn.swish, use_bias=False, kernel_initializer='he_normal', kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        print(d_model, self.num_heads)
+        assert d_model % self.num_heads == 0
 
-    def call(self, x):
-        
-        y = self.norm1(x)
+        self.depth = d_model // self.num_heads
+
+        self.wq = tf.keras.layers.Dense(d_model)
+        self.wk = tf.keras.layers.Dense(d_model)
+        self.wv = tf.keras.layers.Dense(d_model)
+
+        self.dense = tf.keras.layers.Dense(d_model)
+
+    def split_heads(self, x, batch_size):
+        """Split the last dimension into (num_heads, depth).
+        Transpose the result such that the shape is (batch_size, num_heads, seq_len, depth)
+        """
+        x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
+        return tf.transpose(x, perm=[0, 2, 1, 3])
+
+    def scaled_dot_product_attention(self, q, k, v):
+        '''
+        Calculate the attention weights.
+        q, k, v must have matching leading dimensions.
+        k, v must have matching penultimate dimension, i.e.: seq_len_k = seq_len_v.
+
+        Args:
+            q: query shape == (..., seq_len_q, depth)
+            k: key shape == (..., seq_len_k, depth)
+            v: value shape == (..., seq_len_v, depth_v)
+           
+
+        Returns:
+            output, attention_weights
+        '''
+
+        matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
+
+        # scale matmul_qk
+        dk = tf.cast(tf.shape(k)[-1], tf.float32)
+        scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
+
     
-        y = self.MHA(y,y)
-    
-        residual = self.add([x,y])
 
-        y = self.norm2(residual)
-    
-        y = self.MLP(y)
+        # softmax is normalized on the last axis (seq_len_k) so that the scores
+        # add up to 1.
+        attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
 
-        return self.add([residual, y])
+        output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
+        return output, attention_weights
 
-        
+    def call(self, v, k, q):
+        batch_size = tf.shape(q)[0]
 
+        q = self.wq(q)  # (batch_size, seq_len, d_model)
+        k = self.wk(k)  # (batch_size, seq_len, d_model)
+        v = self.wv(v)  # (batch_size, seq_len, d_model)
+        print("ok")
+        q = self.split_heads(q, batch_size)  # (batch_size, num_heads, seq_len_q, depth)
+        k = self.split_heads(k, batch_size)  # (batch_size, num_heads, seq_len_k, depth)
+        v = self.split_heads(v, batch_size)  # (batch_size, num_heads, seq_len_v, depth)
+        print("ok")
+        # scaled_attention.shape == (batch_size, num_heads, seq_len_q, depth)
+        # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
+        scaled_attention, attention_weights = self.scaled_dot_product_attention(q, k, v)
+        print("ok")
+        scaled_attention = tf.transpose(scaled_attention, perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
+        print("ok")
+        concat_attention = tf.reshape(scaled_attention,
+                                    (batch_size, -1, self.d_model))  # (batch_size, seq_len_q, d_model)
+        print("ok")
+        output = self.dense(concat_attention)  # (batch_size, seq_len_q, d_model)
+        print("ok")
+        return output, attention_weights
